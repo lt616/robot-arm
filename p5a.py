@@ -38,6 +38,11 @@ def computeHomo(joint, DH):
 def computeAllHomo(joints, DH):
 	As = {}
 	Homos = {}
+	Zs = {}
+	Ps = {}
+
+	Zs[0] = np.matrix([[0], [0], [1]])
+	Ps[0] = np.matrix([[0], [0], [0]])
 
 	for i in np.arange(0, 7):
 		As[i] = computeHomo(joints[i], DH[i])
@@ -47,10 +52,34 @@ def computeAllHomo(joints, DH):
 		else:
 			Homos[0] = As[0]
 
+		Zs[i + 1] = Homos[i][:3, [2]]
+		Ps[i + 1] = Homos[i][:3, [3]]
+
 		# print("\n" + str(i) + " homoT:")
 		# print(Homos[i])
+		# print(Ps[i + 1])
 
-	return Homos
+	return Zs, Ps
+
+def computeJacobian(Zs, Ps):
+
+	J = np.zeros((6, 7))
+
+	for i in np.arange(0, 7):
+		Jpi = np.cross(Zs[i].transpose(), np.subtract(Ps[7], Ps[i]).transpose())
+		J[0, i] = Jpi[0][0]
+		J[1, i] = Jpi[0][1]
+		J[2, i] = Jpi[0][2]
+
+		J[3, i] = Zs[i][0][0]
+		J[4, i] = Zs[i][1][0]
+		J[5, i] = Zs[i][2][0]
+
+		print(Zs[i])
+		print(J)
+
+
+
 
 def initDH(): 
 	DHrow0 = [0, 0, 0.333]
@@ -69,7 +98,8 @@ def initJoints():
 
 DH = initDH()
 joints = initJoints()
-# computeAllHomo(joints, DH)
+Zs, Ps = computeAllHomo(joints, DH)
+computeJacobian(Zs, Ps)
 
 
 
