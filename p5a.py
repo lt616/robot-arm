@@ -5,11 +5,12 @@ import math
 import matplotlib.pyplot as plt
 import os
 from numpy.linalg import inv
+from numpy.linalg import norm
 
 #DH = [a, alpha, d]
 
 PI = 3.141592657
-BIAS = 1e-3
+BIAS = 1e-2
 
 def computeHomo(joint, DH):
 	temp = np.zeros((4, 4))
@@ -37,7 +38,7 @@ def computeHomo(joint, DH):
 	return temp
 
 
-def computeAllHomo(joints, DH):
+def computeAllHomo(joints, DH, if_write):
 	As = {}
 	Homos = {}
 	Zs = {}
@@ -57,14 +58,17 @@ def computeAllHomo(joints, DH):
 		Zs[i + 1] = Homos[i][:3, [2]]
 		Ps[i + 1] = Homos[i][:3, [3]]
 
+	if if_write:
+		pos_file.write(",".join(str(x) for x in Ps[7].transpose()[0]) + "\n")
+
 		# print("\n" + str(i) + " homoT:")
 		# print(Homos[i])
 		# print(Ps[i + 1])
 
 	return Zs, Ps
 
-def computeJacobian(joints, DH):
-	Zs, Ps = computeAllHomo(joints, DH)
+def computeJacobian(joints, DH, if_write):
+	Zs, Ps = computeAllHomo(joints, DH, if_write)
 	J = np.zeros((6, 7))
 
 	for i in np.arange(0, 7):
@@ -131,20 +135,23 @@ def updateJacoTranspose(e, qi, DH):
 
 	deltax = np.matrix([[1], [1], [1], [1], [1], [1]])
 	i = 0
+
 	while (not checkTiny(deltax)):
-		J = computeJacobian(qi, DH)
+		J = computeJacobian(qi, DH, True)
 
 		alpha = computeAlpha(J, e)
-		print(alpha)
 
 		deltaq = np.matmul(alpha * J.transpose(), e)
 		deltax = np.matmul(J, deltaq)
-		print(deltax)
 
 		qi += deltaq.transpose()[0]
 		e = deltax
 
-	print("all done!")
+		i += 1
+
+		write_file(qi, joint_file)
+
+	print("all done! " + str(i))
 
 
 def updateJacoInverse(e, qi, DH):
@@ -155,7 +162,7 @@ def updateJacoInverse(e, qi, DH):
 	weight = np.matrix([0.5, 0.5, 0.5, 1, 1, 1])
 
 	while (not checkTiny(deltax)):
-		J = computeJacobian(qi, DH)
+		J = computeJacobian(qi, DH, True)
 		Jinv = computeRightPseudo(J)
 		# print(Jinv)
 
@@ -177,26 +184,31 @@ def updateJacoInverse(e, qi, DH):
 
 		i += 1
 
-	print("all done")
+		write_file(qi, joint_file)
+
+	print("all done " + str(i))
 
 
 def updateDampedLS(e, qi, DH):
 
 	deltax = np.matrix([[1], [1], [1], [1], [1], [1]])
+	i = 0
 
 	while (not checkTiny(deltax)):
-		J = computeJacobian(qi, DH)
+		J = computeJacobian(qi, DH, True)
 		Jstar = computeDampedLS(J)
 
 		deltaq = np.matmul(Jstar, e)
 		deltax = np.matmul(J, deltaq)
 
-		print(deltax)
-
 		qi += deltaq.transpose()[0]
 		e = deltax
 
-	print("all done")
+		i += 1
+
+		write_file(qi, joint_file)
+
+	print("all done " + str(i))
 
 
 def checkTiny(x):
@@ -204,6 +216,10 @@ def checkTiny(x):
 		if x[i, 0] > BIAS:
 			return False
 	return True
+
+
+def write_file(qi, file):
+	file.write(",".join(str(x) for x in qi.transpose()) + "\n")
 
 
 def initTs():
@@ -227,11 +243,13 @@ def initDH():
 def initJoints():
 	return [0.1, 0.2, 0.3, -0.4, 0.5, 0.6, 0.7]
 
+joint_file = open("./jacobianTranspose_join.txt", "w")
+pos_file = open("./jacobianTranspose_pos.txt", "w")
 
 DH = initDH()
 joints = initJoints()
-Zs, Ps = computeAllHomo(joints, DH)
-J = computeJacobian(joints, DH)
+Zs, Ps = computeAllHomo(joints, DH, False)
+J = computeJacobian(joints, DH, False)
 
 # P5a
 # print(J)
@@ -239,12 +257,12 @@ J = computeJacobian(joints, DH)
 Ti, Td = initTs()
 e = computeInitError(Ti, Td)
 
-print(e)
+pos_file.write(",".join(str(x) for x in [Ti[0, 3], Ti[1, 3], Ti[2, 3]]) + "\n")
+joint_file.write(",".join(str(x) for x in joints) + "\n")
 
 
-
-# updateJacoTranspose(e, joints, DH)
-updateJacoInverse(e, joints, DH)
+updateJacoTranspose(e, joints, DH)
+# updateJacoInverse(e, joints, DH)
 # updateDampedLS(e, joints, DH)
 
 
