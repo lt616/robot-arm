@@ -9,7 +9,7 @@ from numpy.linalg import inv
 #DH = [a, alpha, d]
 
 PI = 3.141592657
-BIAS = 1e-2
+BIAS = 1e-3
 
 def computeHomo(joint, DH):
 	temp = np.zeros((4, 4))
@@ -100,9 +100,9 @@ def computeInitError(Ti, Td):
 	yd = Td[:3, [1]].transpose()
 	zd = Td[:3, [2]].transpose()
 
-	print(xd)
-	print(yd)
-	print(zd)
+	# print(xd)
+	# print(yd)
+	# print(zd)
 
 	e0 = np.cross(xi, xd) + np.cross(yi, yd) + np.cross(zi, zd)
 
@@ -119,7 +119,8 @@ def computeAlpha(J, e):
 
 
 def computeRightPseudo(J):
-	return np.dot(J.transpose(), inv(np.matmul(J, J.transpose())))
+	return np.matmul(J.transpose(), inv(np.matmul(J, J.transpose())))
+	# return np.dot(J.T, np.linalg.inv(np.dot(J, J.T)))
 
 
 def computeDampedLS(J):
@@ -149,21 +150,32 @@ def updateJacoTranspose(e, qi, DH):
 def updateJacoInverse(e, qi, DH):
 
 	deltax = np.matrix([[1], [1], [1], [1], [1], [1]])
+	i = 0
+
+	weight = np.matrix([0.5, 0.5, 0.5, 1, 1, 1])
 
 	while (not checkTiny(deltax)):
 		J = computeJacobian(qi, DH)
 		Jinv = computeRightPseudo(J)
+		# print(Jinv)
+
+		e[0, 0] = e[0, 0] / 2
+		e[1, 0] = e[1, 0] / 2
+		e[2, 0] = e[2, 0] / 2
+		e[3, 0] = e[3, 0] / 2
+		e[4, 0] = e[4, 0] / 2
+		e[5, 0] = e[5, 0] / 2
 
 		deltaq = np.matmul(Jinv, e)
 		deltax = np.matmul(J, deltaq)
 
-		# print(deltax)
+		print(deltax)
 
 		qi += deltaq.transpose()[0]
-		# print(deltaq)
-		print(qi)
 
 		e = deltax
+
+		i += 1
 
 	print("all done")
 
@@ -222,12 +234,14 @@ Zs, Ps = computeAllHomo(joints, DH)
 J = computeJacobian(joints, DH)
 
 # P5a
-print(J)
+# print(J)
 
 Ti, Td = initTs()
 e = computeInitError(Ti, Td)
 
 print(e)
+
+
 
 # updateJacoTranspose(e, joints, DH)
 updateJacoInverse(e, joints, DH)
