@@ -4,6 +4,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 import os
+from numpy.linalg import inv
 
 #DH = [a, alpha, d]
 
@@ -117,6 +118,14 @@ def computeAlpha(J, e):
 	return np.dot(JJTe, e.transpose()[0]) / np.dot(JJTe, JJTe)
 
 
+def computeRightPseudo(J):
+	return np.matmul(J.transpose(), inv(np.matmul(J, J.transpose())))
+
+
+def computeDampedLS(J):
+	return np.matmul(J.transpose(), inv(np.matmul(J, J.transpose()) + np.identity(6)))
+
+
 def updateJacoTranspose(e, qi, DH):
 
 	deltax = np.matrix([[1], [1], [1], [1], [1], [1]])
@@ -129,7 +138,7 @@ def updateJacoTranspose(e, qi, DH):
 
 		deltaq = np.matmul(alpha * J.transpose(), e)
 		deltax = np.matmul(J, deltaq)
-		print(deltaq)
+		print(deltax)
 
 		qi += deltaq.transpose()[0]
 		e = deltax
@@ -137,8 +146,47 @@ def updateJacoTranspose(e, qi, DH):
 	print("all done!")
 
 
+def updateJacoInverse(e, qi, DH):
+
+	deltax = np.matrix([[1], [1], [1], [1], [1], [1]])
+
+	while (not checkTiny(deltax)):
+		J = computeJacobian(qi, DH)
+		Jinv = computeRightPseudo(J)
+		# print(Jinv)
+
+		deltaq = np.matmul(Jinv, e)
+		deltax = np.matmul(J, deltaq)
+
+		print(deltax)
+
+		qi += deltaq.transpose()[0]
+		e = deltax
+
+	print("all done!")
+
+
+def updateDampedLS(e, qi, DH):
+
+	deltax = np.matrix([[1], [1], [1], [1], [1], [1]])
+
+	while (not checkTiny(deltax)):
+		J = computeJacobian(qi, DH)
+		Jstar = computeDampedLS(J)
+
+		deltaq = np.matmul(Jstar, e)
+		deltax = np.matmul(J, deltaq)
+
+		print(deltax)
+
+		qi += deltaq.transpose()[0]
+		e = deltax
+
+	print("all done")
+
+
 def checkTiny(x):
-	for i in np.arange(0, 7):
+	for i in np.arange(0, 6):
 		if x[i, 0] > BIAS:
 			return False
 	return True
@@ -179,8 +227,9 @@ e = computeInitError(Ti, Td)
 
 print(e)
 
-updateJacoTranspose(e, joints, DH)
-
+# updateJacoTranspose(e, joints, DH)
+# updateJacoInverse(e, joints, DH)
+updateDampedLS(e, joints, DH)
 
 
 
