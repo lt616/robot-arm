@@ -119,7 +119,7 @@ def computeAlpha(J, e):
 
 
 def computeRightPseudo(J):
-	return np.matmul(J.transpose(), inv(np.matmul(J, J.transpose())))
+	return np.dot(J.transpose(), inv(np.matmul(J, J.transpose())))
 
 
 def computeDampedLS(J):
@@ -153,17 +153,19 @@ def updateJacoInverse(e, qi, DH):
 	while (not checkTiny(deltax)):
 		J = computeJacobian(qi, DH)
 		Jinv = computeRightPseudo(J)
-		# print(Jinv)
 
 		deltaq = np.matmul(Jinv, e)
 		deltax = np.matmul(J, deltaq)
 
-		print(deltax)
+		# print(deltax)
 
 		qi += deltaq.transpose()[0]
+		# print(deltaq)
+		print(qi)
+
 		e = deltax
 
-	print("all done!")
+	print("all done")
 
 
 def updateDampedLS(e, qi, DH):
@@ -228,8 +230,8 @@ e = computeInitError(Ti, Td)
 print(e)
 
 # updateJacoTranspose(e, joints, DH)
-# updateJacoInverse(e, joints, DH)
-updateDampedLS(e, joints, DH)
+updateJacoInverse(e, joints, DH)
+# updateDampedLS(e, joints, DH)
 
 
 
